@@ -1,0 +1,69 @@
+name: Compile Libraries
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-libs-macos:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["macos-11"]
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Compile library
+        run: ./mac_build.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: lib
+          path: "libsndfile.dylib"
+          retention-days: 7
+          if-no-files-found: error
+
+  build-libs-linux:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-20.04"]
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Compile library
+        run: ./linux_build.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: lib
+          path: "libsndfile.so"
+          retention-days: 7
+          if-no-files-found: error
+
+  build-libs-windows:
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        include:
+        - triplet: "x64-windows-custom"
+          libname: "libsndfile_x64.dll"
+        - triplet: "x86-windows-custom"
+          libname: "libsndfile_x86.dll"
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Update VCPKG
+        run: "vcpkg update"
+      - name: Build library
+        run: "vcpkg install libsndfile:${{ matrix.triplet }} --overlay-triplets=triplets"
+      - name: Copy library
+        run: "Copy-Item c:/vcpkg/installed/${{ matrix.triplet }}/bin/sndfile.dll -Destination ${{ matrix.libname }}"
+      - uses: actions/upload-artifact@v3
+        with:
+          name: lib
+          path: ${{ matrix.libname }}
+          retention-days: 7
+          if-no-files-found: error
